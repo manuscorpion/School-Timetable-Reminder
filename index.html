@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Timetable Reminder</title>
     <!-- App Icons -->
-    <!-- A self-contained SVG icon is more reliable than an external link. -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📚%3C/text%3E%3C/svg%3E">
-    <!-- The apple-touch-icon is for when you add the app to your iPhone's home screen. -->
     <link rel="apple-touch-icon" href="https://placehold.co/180/818cf8/ffffff?text=📚">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -276,13 +274,37 @@
                 statusColor = 'bg-blue-100 text-blue-800';
             } else if (dayName === 'saturday') {
                 switch (saturdayRule) {
-                    case 'all_holiday': statusText = 'Holiday'; statusColor = 'bg-blue-100 text-blue-800'; break;
-                    case 'all_half_day': statusText = 'Half Day'; statusColor = 'bg-yellow-100 text-yellow-800'; subjects = timetableData.saturday || []; break;
-                    case 'all_full_day': statusText = 'School Day'; statusColor = 'bg-green-100 text-green-800'; subjects = timetableData.saturday || []; break;
-                    case '2nd_4th_holiday': default:
-                        const isSecondSaturday = date > 7 && date <= 14;
-                        const isFourthSaturday = date > 21 && date <= 28;
-                        if (isSecondSaturday || isFourthSaturday) {
+                    case 'all_holiday': 
+                        statusText = 'Holiday'; 
+                        statusColor = 'bg-blue-100 text-blue-800'; 
+                        break;
+                    case 'all_half_day': 
+                        statusText = 'Half Day'; 
+                        statusColor = 'bg-yellow-100 text-yellow-800'; 
+                        subjects = timetableData.saturday || []; 
+                        break;
+                    case 'all_full_day': 
+                        statusText = 'School Day'; 
+                        statusColor = 'bg-green-100 text-green-800'; 
+                        subjects = timetableData.saturday || []; 
+                        break;
+                    case '1st_3rd_holiday':
+                        const isFirstSaturday = date <= 7;
+                        const isThirdSaturday = date > 14 && date <= 21;
+                        if (isFirstSaturday || isThirdSaturday) {
+                            statusText = 'Holiday';
+                            statusColor = 'bg-blue-100 text-blue-800';
+                        } else {
+                            statusText = 'Half Day';
+                            statusColor = 'bg-yellow-100 text-yellow-800';
+                            subjects = timetableData.saturday || [];
+                        }
+                        break;
+                    case '2nd_4th_holiday': 
+                    default:
+                        const isSecondSat = date > 7 && date <= 14;
+                        const isFourthSat = date > 21 && date <= 28;
+                        if (isSecondSat || isFourthSat) {
                             statusText = 'Holiday'; statusColor = 'bg-blue-100 text-blue-800';
                         } else {
                             statusText = 'Half Day'; statusColor = 'bg-yellow-100 text-yellow-800'; subjects = timetableData.saturday || [];
@@ -362,7 +384,14 @@
                 formGroup.innerHTML = `<label for="${day}" class="block text-sm font-medium text-gray-700 mb-1">${dayCapitalized}</label><input type="text" id="${day}" name="${day}" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" value="${subjects.join(', ')}">`;
                 timetableFormEl.appendChild(formGroup);
             });
-            saturdayConfigContainerEl.innerHTML = `<label for="saturday-rule" class="block text-sm font-medium text-gray-900 mb-2">Saturday Rule</label><select id="saturday-rule" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="2nd_4th_holiday">2nd & 4th Saturday Holiday (Default)</option><option value="all_half_day">All Saturdays are Half Day</option><option value="all_full_day">All Saturdays are Full Day</option><option value="all_holiday">All Saturdays are Holiday</option></select>`;
+            saturdayConfigContainerEl.innerHTML = `<label for="saturday-rule" class="block text-sm font-medium text-gray-900 mb-2">Saturday Rule</label>
+            <select id="saturday-rule" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="2nd_4th_holiday">2nd & 4th Saturday Holiday</option>
+                <option value="1st_3rd_holiday">1st & 3rd Saturday Holiday</option>
+                <option value="all_half_day">All Saturdays are Half Day</option>
+                <option value="all_full_day">All Saturdays are Full Day</option>
+                <option value="all_holiday">All Saturdays are Holiday</option>
+            </select>`;
             document.getElementById('saturday-rule').value = timetableData.saturdayRule || '2nd_4th_holiday';
         }
 
