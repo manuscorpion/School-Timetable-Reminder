@@ -52,12 +52,23 @@
             <p class="text-gray-500 mt-1">Your daily guide to what's in the bag!</p>
         </header>
 
-        <!-- Today's Schedule -->
+        <!-- Day's Schedule -->
         <main>
             <div class="bg-white rounded-xl shadow-lg p-6">
+                <!-- Day Navigation -->
+                <div class="flex justify-between items-center mb-4">
+                    <button id="prev-day-btn" class="p-2 rounded-full hover:bg-gray-200 transition">
+                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <button id="today-btn" class="text-indigo-600 font-semibold hover:underline">Today</button>
+                    <button id="next-day-btn" class="p-2 rounded-full hover:bg-gray-200 transition">
+                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+                
                 <div class="flex justify-between items-center border-b pb-3 mb-4">
                     <div>
-                        <h2 class="text-xl font-semibold">Today's Schedule</h2>
+                        <h2 id="schedule-day-title" class="text-xl font-semibold">Today's Schedule</h2>
                         <p id="current-date" class="text-sm text-gray-500">Loading...</p>
                     </div>
                     <div id="day-status" class="px-3 py-1 text-sm font-medium rounded-full"></div>
@@ -75,14 +86,6 @@
             </div>
         </main>
 
-        <!-- Full Week Timetable (Initially Hidden) -->
-        <section id="full-week-view" class="mt-8 hidden">
-            <h2 class="text-2xl font-bold text-center mb-4 text-gray-700">Full Weekly Timetable</h2>
-            <div id="full-week-container" class="space-y-4">
-                <!-- Weekly schedule will be dynamically inserted here -->
-            </div>
-        </section>
-
         <!-- Action Buttons -->
         <footer class="mt-8 text-center space-y-4">
             <div class="flex flex-wrap justify-center gap-4">
@@ -91,9 +94,6 @@
                 </button>
                 <button id="link-device-btn" class="bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-800 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600">
                     Link Device
-                </button>
-                 <button id="toggle-week-view-btn" class="bg-teal-500 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-teal-600 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
-                    View Full Week
                 </button>
             </div>
             <p class="text-xs text-gray-400 pt-2">Your User ID: <span id="user-id" class="font-mono"></span></p>
@@ -162,6 +162,7 @@
         let userId = null;
         let timetableData = {};
         let unsubscribe;
+        let displayedDate = new Date(); // State for the currently viewed date
 
         // DOM Elements
         const currentDateEl = document.getElementById('current-date');
@@ -169,6 +170,7 @@
         const subjectListEl = document.getElementById('subject-list');
         const noSubjectsMessageEl = document.getElementById('no-subjects-message');
         const userIdEl = document.getElementById('user-id');
+        const scheduleDayTitleEl = document.getElementById('schedule-day-title');
 
         // Edit Modal
         const editTimetableBtn = document.getElementById('edit-timetable-btn');
@@ -188,10 +190,10 @@
         const resetDeviceBtn = document.getElementById('reset-device-btn');
         const cancelLinkBtn = document.getElementById('cancel-link-btn');
 
-        // Full Week View
-        const toggleWeekViewBtn = document.getElementById('toggle-week-view-btn');
-        const fullWeekView = document.getElementById('full-week-view');
-        const fullWeekContainer = document.getElementById('full-week-container');
+        // Day Navigation
+        const prevDayBtn = document.getElementById('prev-day-btn');
+        const nextDayBtn = document.getElementById('next-day-btn');
+        const todayBtn = document.getElementById('today-btn');
 
         const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const USER_ID_KEY = 'timetableUserId';
@@ -233,23 +235,29 @@
                     timetableData = { saturdayRule: '2nd_4th_holiday' }; 
                     daysOfWeek.slice(1, 7).forEach(day => timetableData[day] = []);
                 }
-                displayTodaysSchedule();
+                displayScheduleForDate(displayedDate);
                 populateEditForm();
-                displayFullWeekSchedule(); // Update the full week view as well
             }, (error) => {
                 console.error("Error fetching timetable: ", error);
             });
         }
         
         // --- CORE LOGIC ---
-        function displayTodaysSchedule() {
+        function displayScheduleForDate(dateToDisplay) {
             const today = new Date();
-            const dayIndex = today.getDay();
+            today.setHours(0, 0, 0, 0); // Normalize today's date
+            const normalizedDateToDisplay = new Date(dateToDisplay);
+            normalizedDateToDisplay.setHours(0, 0, 0, 0); // Normalize displayed date
+
+            const isToday = today.getTime() === normalizedDateToDisplay.getTime();
+
+            const dayIndex = normalizedDateToDisplay.getDay();
             const dayName = daysOfWeek[dayIndex];
-            const date = today.getDate();
+            const date = normalizedDateToDisplay.getDate();
             const saturdayRule = timetableData.saturdayRule || '2nd_4th_holiday';
 
-            currentDateEl.textContent = today.toLocaleDateString('en-US', {
+            scheduleDayTitleEl.textContent = isToday ? "Today's Schedule" : dayName.charAt(0).toUpperCase() + dayName.slice(1);
+            currentDateEl.textContent = normalizedDateToDisplay.toLocaleDateString('en-US', {
                 weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
             });
 
@@ -283,7 +291,9 @@
             dayStatusEl.className = `px-3 py-1 text-sm font-medium rounded-full ${statusColor}`;
 
             renderSubjectList(subjects);
-            handleNotifications(subjects, statusText);
+            if (isToday) {
+                handleNotifications(subjects, statusText);
+            }
         }
 
         function renderSubjectList(subjects) {
@@ -301,36 +311,6 @@
                 subjectListEl.classList.add('hidden');
                 noSubjectsMessageEl.classList.remove('hidden');
             }
-        }
-
-        function displayFullWeekSchedule() {
-            fullWeekContainer.innerHTML = ''; // Clear previous list
-            const weekDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-
-            weekDays.forEach(day => {
-                const dayCapitalized = day.charAt(0).toUpperCase() + day.slice(1);
-                const subjects = timetableData[day] || [];
-
-                const dayCard = document.createElement('div');
-                dayCard.className = 'bg-white rounded-xl shadow-md p-4';
-
-                let subjectHTML = '';
-                if (subjects.length > 0) {
-                    subjectHTML = '<ul class="space-y-2 mt-2 list-disc list-inside">';
-                    subjects.forEach(subject => {
-                        subjectHTML += `<li class="text-gray-700">${subject}</li>`;
-                    });
-                    subjectHTML += '</ul>';
-                } else {
-                    subjectHTML = '<p class="text-gray-500 mt-2 text-sm">No classes scheduled.</p>';
-                }
-
-                dayCard.innerHTML = `
-                    <h3 class="font-bold text-lg text-indigo-600">${dayCapitalized}</h3>
-                    ${subjectHTML}
-                `;
-                fullWeekContainer.appendChild(dayCard);
-            });
         }
 
         // --- NOTIFICATIONS ---
@@ -441,9 +421,19 @@
         linkTimetableBtn.addEventListener('click', linkDeviceToId);
         resetDeviceBtn.addEventListener('click', resetDevice);
 
-        toggleWeekViewBtn.addEventListener('click', () => {
-            const isHidden = fullWeekView.classList.toggle('hidden');
-            toggleWeekViewBtn.textContent = isHidden ? 'View Full Week' : 'Hide Full Week';
+        prevDayBtn.addEventListener('click', () => {
+            displayedDate.setDate(displayedDate.getDate() - 1);
+            displayScheduleForDate(displayedDate);
+        });
+
+        nextDayBtn.addEventListener('click', () => {
+            displayedDate.setDate(displayedDate.getDate() + 1);
+            displayScheduleForDate(displayedDate);
+        });
+
+        todayBtn.addEventListener('click', () => {
+            displayedDate = new Date();
+            displayScheduleForDate(displayedDate);
         });
 
         window.addEventListener('keydown', (e) => {
