@@ -126,16 +126,26 @@
     
     <!-- Firebase -->
     <script type="module">
-        // Firebase Imports
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Firebase Imports - Updated to your Firebase version
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
-        // --- DO NOT EDIT ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO_KEY", authDomain: "DEMO.firebaseapp.com", projectId: "DEMO" };
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'school-timetable-app';
-        // --- END DO NOT EDIT ---
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDB2gmJGDxOIBhny0X52UDojnbU3wEkEDE",
+            authDomain: "school-timetable-reminder.firebaseapp.com",
+            projectId: "school-timetable-reminder",
+            storageBucket: "school-timetable-reminder.firebasestorage.app",
+            messagingSenderId: "967365611814",
+            appId: "1:967365611814:web:b78e0689a4e0144cca31e7",
+            measurementId: "G-Y6YRMM1RNK"
+        };
         
+        // This is a unique identifier for this app's data within Firestore.
+        const appId = 'school-timetable-app-v1';
+        
+        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -180,11 +190,7 @@
                 generateQRCodeForUserId();
             } else {
                 try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
+                    await signInAnonymously(auth);
                 } catch (error) {
                     console.error("Authentication Error:", error);
                 }
@@ -196,7 +202,7 @@
             if (!userId) return;
             if (unsubscribe) unsubscribe();
 
-            const timetableRef = doc(db, 'artifacts', appId, 'users', userId, 'timetable', 'schedule');
+            const timetableRef = doc(db, 'timetables', userId);
             
             unsubscribe = onSnapshot(timetableRef, (docSnap) => {
                 if (docSnap.exists()) {
@@ -329,7 +335,7 @@
                 newTimetableData[day] = input.value.split(',').map(s => s.trim()).filter(s => s !== '');
             });
             try {
-                const timetableRef = doc(db, 'artifacts', appId, 'users', userId, 'timetable', 'schedule');
+                const timetableRef = doc(db, 'timetables', userId);
                 await setDoc(timetableRef, newTimetableData);
                 closeModal(editModal);
             } catch (error) { console.error("Error saving timetable: ", error); }
@@ -361,12 +367,12 @@
             }
 
             try {
-                const sourceRef = doc(db, 'artifacts', appId, 'users', sourceId, 'timetable', 'schedule');
+                const sourceRef = doc(db, 'timetables', sourceId);
                 const docSnap = await getDoc(sourceRef);
 
                 if (docSnap.exists()) {
                     const dataToLoad = docSnap.data();
-                    const destinationRef = doc(db, 'artifacts', appId, 'users', userId, 'timetable', 'schedule');
+                    const destinationRef = doc(db, 'timetables', userId);
                     await setDoc(destinationRef, dataToLoad);
                     alert("Timetable loaded successfully!");
                     closeModal(syncModal);
