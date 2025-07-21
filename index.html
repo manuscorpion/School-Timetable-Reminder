@@ -75,14 +75,25 @@
             </div>
         </main>
 
+        <!-- Full Week Timetable (Initially Hidden) -->
+        <section id="full-week-view" class="mt-8 hidden">
+            <h2 class="text-2xl font-bold text-center mb-4 text-gray-700">Full Weekly Timetable</h2>
+            <div id="full-week-container" class="space-y-4">
+                <!-- Weekly schedule will be dynamically inserted here -->
+            </div>
+        </section>
+
         <!-- Action Buttons -->
         <footer class="mt-8 text-center space-y-4">
-            <div class="flex justify-center space-x-4">
+            <div class="flex flex-wrap justify-center gap-4">
                 <button id="edit-timetable-btn" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-indigo-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     Edit Timetable
                 </button>
-                <button id="sync-transfer-btn" class="bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-800 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600">
-                    Sync / Transfer
+                <button id="link-device-btn" class="bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-800 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600">
+                    Link Device
+                </button>
+                 <button id="toggle-week-view-btn" class="bg-teal-500 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-teal-600 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
+                    View Full Week
                 </button>
             </div>
             <p class="text-xs text-gray-400 pt-2">Your User ID: <span id="user-id" class="font-mono"></span></p>
@@ -107,20 +118,21 @@
         </div>
     </div>
 
-    <!-- Sync/Transfer Modal -->
-    <div id="sync-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50 opacity-0">
+    <!-- Link Device Modal -->
+    <div id="link-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50 opacity-0">
         <div class="modal-content bg-white w-full max-w-sm text-center rounded-xl shadow-2xl transform scale-95 p-6">
-             <h2 class="text-2xl font-bold">Sync Your Data</h2>
-             <p class="text-sm text-gray-600 mt-2">On your other device, enter the User ID below to load this timetable.</p>
+             <h2 class="text-2xl font-bold">Link Another Device</h2>
+             <p class="text-sm text-gray-600 mt-2">On your new device, open this app, click "Link Device", and enter the User ID below.</p>
              <div id="qr-code-container" title="Scan this to copy your User ID"></div>
-             <p class="text-sm text-gray-600 mt-2">Your User ID:</p>
-             <p id="sync-user-id" class="font-mono bg-gray-100 p-2 rounded-md text-sm my-2 break-all"></p>
+             <p class="text-sm text-gray-600 mt-2">Your Timetable's User ID:</p>
+             <p id="link-user-id" class="font-mono bg-gray-100 p-2 rounded-md text-sm my-2 break-all"></p>
              <hr class="my-4">
-             <h3 class="text-lg font-semibold">Load from another device?</h3>
-             <p class="text-sm text-gray-600 mt-1">Enter the User ID from your other device below.</p>
+             <h3 class="text-lg font-semibold">Use Timetable from Another Device?</h3>
+             <p class="text-sm text-gray-600 mt-1">Enter the User ID from your other device to link to it.</p>
              <input type="text" id="load-id-input" placeholder="Enter User ID from other device" class="w-full mt-2 p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
-             <button id="load-timetable-btn" class="w-full mt-3 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 transition">Load Timetable</button>
-             <button id="cancel-sync-btn" class="w-full mt-3 bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition">Close</button>
+             <button id="link-timetable-btn" class="w-full mt-3 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 transition">Link This Device</button>
+             <button id="reset-device-btn" class="w-full mt-3 bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition">Start a New Timetable</button>
+             <button id="cancel-link-btn" class="w-full mt-3 bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition">Close</button>
         </div>
     </div>
     
@@ -141,9 +153,6 @@
             appId: "1:967365611814:web:b78e0689a4e0144cca31e7",
             measurementId: "G-Y6YRMM1RNK"
         };
-        
-        // This is a unique identifier for this app's data within Firestore.
-        const appId = 'school-timetable-app-v1';
         
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
@@ -169,33 +178,46 @@
         const saveBtn = document.getElementById('save-btn');
         const cancelEditBtn = document.getElementById('cancel-edit-btn');
         
-        // Sync Modal
-        const syncTransferBtn = document.getElementById('sync-transfer-btn');
-        const syncModal = document.getElementById('sync-modal');
+        // Link Device Modal
+        const linkDeviceBtn = document.getElementById('link-device-btn');
+        const linkModal = document.getElementById('link-modal');
         const qrCodeContainer = document.getElementById('qr-code-container');
-        const syncUserIdEl = document.getElementById('sync-user-id');
+        const linkUserIdEl = document.getElementById('link-user-id');
         const loadIdInput = document.getElementById('load-id-input');
-        const loadTimetableBtn = document.getElementById('load-timetable-btn');
-        const cancelSyncBtn = document.getElementById('cancel-sync-btn');
+        const linkTimetableBtn = document.getElementById('link-timetable-btn');
+        const resetDeviceBtn = document.getElementById('reset-device-btn');
+        const cancelLinkBtn = document.getElementById('cancel-link-btn');
+
+        // Full Week View
+        const toggleWeekViewBtn = document.getElementById('toggle-week-view-btn');
+        const fullWeekView = document.getElementById('full-week-view');
+        const fullWeekContainer = document.getElementById('full-week-container');
 
         const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const USER_ID_KEY = 'timetableUserId';
 
-        // --- AUTHENTICATION ---
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userId = user.uid;
-                userIdEl.textContent = userId;
-                syncUserIdEl.textContent = userId;
-                setupTimetableListener();
-                generateQRCodeForUserId();
+        // --- AUTHENTICATION & INITIALIZATION ---
+        async function initializeAppLogic() {
+            await signInAnonymously(auth);
+            const savedUserId = localStorage.getItem(USER_ID_KEY);
+            if (savedUserId) {
+                userId = savedUserId;
             } else {
-                try {
-                    await signInAnonymously(auth);
-                } catch (error) {
-                    console.error("Authentication Error:", error);
+                const currentUser = auth.currentUser;
+                if (currentUser) {
+                    userId = currentUser.uid;
+                    localStorage.setItem(USER_ID_KEY, userId);
+                } else {
+                    console.error("Could not get user for initial setup.");
+                    alert("Error: Could not initialize the app. Please refresh.");
+                    return;
                 }
             }
-        });
+            userIdEl.textContent = userId;
+            linkUserIdEl.textContent = userId;
+            setupTimetableListener();
+            generateQRCodeForUserId();
+        }
 
         // --- FIRESTORE REAL-TIME LISTENER ---
         function setupTimetableListener() {
@@ -208,11 +230,12 @@
                 if (docSnap.exists()) {
                     timetableData = docSnap.data();
                 } else {
-                    timetableData = { saturdayRule: '2nd_4th_holiday' }; // Default rule
+                    timetableData = { saturdayRule: '2nd_4th_holiday' }; 
                     daysOfWeek.slice(1, 7).forEach(day => timetableData[day] = []);
                 }
                 displayTodaysSchedule();
                 populateEditForm();
+                displayFullWeekSchedule(); // Update the full week view as well
             }, (error) => {
                 console.error("Error fetching timetable: ", error);
             });
@@ -280,6 +303,36 @@
             }
         }
 
+        function displayFullWeekSchedule() {
+            fullWeekContainer.innerHTML = ''; // Clear previous list
+            const weekDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+            weekDays.forEach(day => {
+                const dayCapitalized = day.charAt(0).toUpperCase() + day.slice(1);
+                const subjects = timetableData[day] || [];
+
+                const dayCard = document.createElement('div');
+                dayCard.className = 'bg-white rounded-xl shadow-md p-4';
+
+                let subjectHTML = '';
+                if (subjects.length > 0) {
+                    subjectHTML = '<ul class="space-y-2 mt-2 list-disc list-inside">';
+                    subjects.forEach(subject => {
+                        subjectHTML += `<li class="text-gray-700">${subject}</li>`;
+                    });
+                    subjectHTML += '</ul>';
+                } else {
+                    subjectHTML = '<p class="text-gray-500 mt-2 text-sm">No classes scheduled.</p>';
+                }
+
+                dayCard.innerHTML = `
+                    <h3 class="font-bold text-lg text-indigo-600">${dayCapitalized}</h3>
+                    ${subjectHTML}
+                `;
+                fullWeekContainer.appendChild(dayCard);
+            });
+        }
+
         // --- NOTIFICATIONS ---
         function handleNotifications(subjects, status) {
             if (status.toLowerCase().includes('holiday') || !subjects || subjects.length === 0) return;
@@ -341,12 +394,12 @@
             } catch (error) { console.error("Error saving timetable: ", error); }
         }
 
-        // --- SYNC/TRANSFER LOGIC ---
+        // --- LINK DEVICE LOGIC ---
         function generateQRCodeForUserId() {
             if (!userId) return;
             qrCodeContainer.innerHTML = '';
             new QRCode(qrCodeContainer, {
-                text: userId, // The QR code now contains only the User ID
+                text: userId,
                 width: 180,
                 height: 180,
                 colorDark : "#000000",
@@ -355,33 +408,26 @@
             });
         }
         
-        async function loadTimetableFromId() {
+        function linkDeviceToId() {
             const sourceId = loadIdInput.value.trim();
             if (!sourceId) { 
                 alert("Please enter a User ID."); 
                 return; 
             }
             if (sourceId === userId) { 
-                alert("You can't load data from your own ID."); 
+                alert("This device is already linked to this ID."); 
                 return; 
             }
+            localStorage.setItem(USER_ID_KEY, sourceId);
+            alert("Device linked successfully! The app will now reload to use the shared timetable.");
+            window.location.reload();
+        }
 
-            try {
-                const sourceRef = doc(db, 'timetables', sourceId);
-                const docSnap = await getDoc(sourceRef);
-
-                if (docSnap.exists()) {
-                    const dataToLoad = docSnap.data();
-                    const destinationRef = doc(db, 'timetables', userId);
-                    await setDoc(destinationRef, dataToLoad);
-                    alert("Timetable loaded successfully!");
-                    closeModal(syncModal);
-                } else {
-                    alert("Error: No timetable found for that User ID. Please check the ID and try again.");
-                }
-            } catch (error) {
-                console.error("Error loading timetable:", error);
-                alert("An error occurred while trying to load the timetable.");
+        function resetDevice() {
+            if (confirm("Are you sure you want to unlink this device and start a new, blank timetable? This cannot be undone.")) {
+                localStorage.removeItem(USER_ID_KEY);
+                alert("Device has been reset. The app will now reload with a new timetable.");
+                window.location.reload();
             }
         }
 
@@ -390,19 +436,25 @@
         cancelEditBtn.addEventListener('click', () => closeModal(editModal));
         saveBtn.addEventListener('click', saveTimetable);
         
-        syncTransferBtn.addEventListener('click', () => openModal(syncModal));
-        cancelSyncBtn.addEventListener('click', () => closeModal(syncModal));
-        loadTimetableBtn.addEventListener('click', loadTimetableFromId);
+        linkDeviceBtn.addEventListener('click', () => openModal(linkModal));
+        cancelLinkBtn.addEventListener('click', () => closeModal(linkModal));
+        linkTimetableBtn.addEventListener('click', linkDeviceToId);
+        resetDeviceBtn.addEventListener('click', resetDevice);
+
+        toggleWeekViewBtn.addEventListener('click', () => {
+            const isHidden = fullWeekView.classList.toggle('hidden');
+            toggleWeekViewBtn.textContent = isHidden ? 'View Full Week' : 'Hide Full Week';
+        });
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 if (!editModal.classList.contains('hidden')) closeModal(editModal);
-                if (!syncModal.classList.contains('hidden')) closeModal(syncModal);
+                if (!linkModal.classList.contains('hidden')) closeModal(linkModal);
             }
         });
 
-        // Initial call
-        displayTodaysSchedule();
+        // --- INITIAL APP START ---
+        initializeAppLogic();
 
     </script>
 </body>
