@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Timetable Reminder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        #qr-code-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="app" class="max-w-md mx-auto p-4 min-h-screen">
+        <!-- Header -->
+        <header class="text-center my-6">
+            <h1 class="text-3xl font-bold text-indigo-600">Timetable Reminder</h1>
+            <p class="text-gray-500 mt-1">Your daily guide to what's in the bag!</p>
+        </header>
+
+        <!-- Today's Schedule -->
+        <main>
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center border-b pb-3 mb-4">
+                    <div>
+                        <h2 class="text-xl font-semibold">Today's Schedule</h2>
+                        <p id="current-date" class="text-sm text-gray-500">Loading...</p>
+                    </div>
+                    <div id="day-status" class="px-3 py-1 text-sm font-medium rounded-full"></div>
+                </div>
+                <div id="subject-list" class="space-y-3">
+                    <!-- Subjects will be dynamically inserted here -->
+                </div>
+                 <div id="no-subjects-message" class="text-center py-6 hidden">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                    <h3 class="mt-2 text-lg font-medium text-gray-900">No subjects today!</h3>
+                    <p class="mt-1 text-sm text-gray-500">Enjoy your day off or edit your timetable.</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Action Buttons -->
+        <footer class="mt-8 text-center space-y-4">
+            <div class="flex justify-center space-x-4">
+                <button id="edit-timetable-btn" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-indigo-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Edit Timetable
+                </button>
+                <button id="sync-transfer-btn" class="bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-800 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-600">
+                    Sync / Transfer
+                </button>
+            </div>
+            <p class="text-xs text-gray-400 pt-2">Your User ID: <span id="user-id" class="font-mono"></span></p>
+        </footer>
+    </div>
+
+    <!-- Edit Timetable Modal -->
+    <div id="edit-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50 opacity-0">
+        <div class="modal-content bg-white w-full max-w-lg rounded-xl shadow-2xl transform scale-95">
+            <div class="p-6 border-b">
+                <h2 class="text-2xl font-bold">Edit Your Weekly Timetable</h2>
+                <p class="text-sm text-gray-500">Enter subjects and configure Saturday rules.</p>
+            </div>
+            <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div id="timetable-form"></div>
+                <div id="saturday-config-container" class="pt-4 border-t"></div>
+            </div>
+            <div class="bg-gray-50 p-4 flex justify-end space-x-3 rounded-b-xl">
+                <button id="cancel-edit-btn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-5 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                <button id="save-btn" class="bg-green-500 text-white font-semibold py-2 px-5 rounded-lg hover:bg-green-600 transition">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync/Transfer Modal -->
+    <div id="sync-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50 opacity-0">
+        <div class="modal-content bg-white w-full max-w-sm text-center rounded-xl shadow-2xl transform scale-95 p-6">
+             <h2 class="text-2xl font-bold">Sync Your Data</h2>
+             <p class="text-sm text-gray-600 mt-2">On your other device, enter the User ID below to load this timetable.</p>
+             <div id="qr-code-container" title="Scan this to copy your User ID"></div>
+             <p class="text-sm text-gray-600 mt-2">Your User ID:</p>
+             <p id="sync-user-id" class="font-mono bg-gray-100 p-2 rounded-md text-sm my-2 break-all"></p>
+             <hr class="my-4">
+             <h3 class="text-lg font-semibold">Load from another device?</h3>
+             <p class="text-sm text-gray-600 mt-1">Enter the User ID from your other device below.</p>
+             <input type="text" id="load-id-input" placeholder="Enter User ID from other device" class="w-full mt-2 p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+             <button id="load-timetable-btn" class="w-full mt-3 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 transition">Load Timetable</button>
+             <button id="cancel-sync-btn" class="w-full mt-3 bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition">Close</button>
+        </div>
+    </div>
+    
+    <!-- Firebase -->
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- DO NOT EDIT ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO_KEY", authDomain: "DEMO.firebaseapp.com", projectId: "DEMO" };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'school-timetable-app';
+        // --- END DO NOT EDIT ---
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        let userId = null;
+        let timetableData = {};
+        let unsubscribe;
+
+        // DOM Elements
+        const currentDateEl = document.getElementById('current-date');
+        const dayStatusEl = document.getElementById('day-status');
+        const subjectListEl = document.getElementById('subject-list');
+        const noSubjectsMessageEl = document.getElementById('no-subjects-message');
+        const userIdEl = document.getElementById('user-id');
+
+        // Edit Modal
+        const editTimetableBtn = document.getElementById('edit-timetable-btn');
+        const editModal = document.getElementById('edit-modal');
+        const timetableFormEl = document.getElementById('timetable-form');
+        const saturdayConfigContainerEl = document.getElementById('saturday-config-container');
+        const saveBtn = document.getElementById('save-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        
+        // Sync Modal
+        const syncTransferBtn = document.getElementById('sync-transfer-btn');
+        const syncModal = document.getElementById('sync-modal');
+        const qrCodeContainer = document.getElementById('qr-code-container');
+        const syncUserIdEl = document.getElementById('sync-user-id');
+        const loadIdInput = document.getElementById('load-id-input');
+        const loadTimetableBtn = document.getElementById('load-timetable-btn');
+        const cancelSyncBtn = document.getElementById('cancel-sync-btn');
+
+        const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+        // --- AUTHENTICATION ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                userIdEl.textContent = userId;
+                syncUserIdEl.textContent = userId;
+                setupTimetableListener();
+                generateQRCodeForUserId();
+            } else {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Authentication Error:", error);
+                }
+            }
+        });
+
+        // --- FIRESTORE REAL-TIME LISTENER ---
+        function setupTimetableListener() {
+            if (!userId) return;
+            if (unsubscribe) unsubscribe();
+
+            const timetableRef = doc(db, 'artifacts', appId, 'users', userId, 'timetable', 'schedule');
+            
+            unsubscribe = onSnapshot(timetableRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    timetableData = docSnap.data();
+                } else {
+                    timetableData = { saturdayRule: '2nd_4th_holiday' }; // Default rule
+                    daysOfWeek.slice(1, 7).forEach(day => timetableData[day] = []);
+                }
+                displayTodaysSchedule();
+                populateEditForm();
+            }, (error) => {
+                console.error("Error fetching timetable: ", error);
+            });
+        }
+        
+        // --- CORE LOGIC ---
+        function displayTodaysSchedule() {
+            const today = new Date();
+            const dayIndex = today.getDay();
+            const dayName = daysOfWeek[dayIndex];
+            const date = today.getDate();
+            const saturdayRule = timetableData.saturdayRule || '2nd_4th_holiday';
+
+            currentDateEl.textContent = today.toLocaleDateString('en-US', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+
+            let subjects = [];
+            let statusText = 'School Day';
+            let statusColor = 'bg-green-100 text-green-800';
+            
+            if (dayName === 'sunday') {
+                statusText = 'Holiday';
+                statusColor = 'bg-blue-100 text-blue-800';
+            } else if (dayName === 'saturday') {
+                switch (saturdayRule) {
+                    case 'all_holiday': statusText = 'Holiday'; statusColor = 'bg-blue-100 text-blue-800'; break;
+                    case 'all_half_day': statusText = 'Half Day'; statusColor = 'bg-yellow-100 text-yellow-800'; subjects = timetableData.saturday || []; break;
+                    case 'all_full_day': statusText = 'School Day'; statusColor = 'bg-green-100 text-green-800'; subjects = timetableData.saturday || []; break;
+                    case '2nd_4th_holiday': default:
+                        const isSecondSaturday = date > 7 && date <= 14;
+                        const isFourthSaturday = date > 21 && date <= 28;
+                        if (isSecondSaturday || isFourthSaturday) {
+                            statusText = 'Holiday'; statusColor = 'bg-blue-100 text-blue-800';
+                        } else {
+                            statusText = 'Half Day'; statusColor = 'bg-yellow-100 text-yellow-800'; subjects = timetableData.saturday || [];
+                        }
+                        break;
+                }
+            } else {
+                subjects = timetableData[dayName] || [];
+            }
+            
+            dayStatusEl.textContent = statusText;
+            dayStatusEl.className = `px-3 py-1 text-sm font-medium rounded-full ${statusColor}`;
+
+            renderSubjectList(subjects);
+            handleNotifications(subjects, statusText);
+        }
+
+        function renderSubjectList(subjects) {
+            subjectListEl.innerHTML = '';
+            if (subjects && subjects.length > 0) {
+                subjectListEl.classList.remove('hidden');
+                noSubjectsMessageEl.classList.add('hidden');
+                subjects.forEach((subject, index) => {
+                    const li = document.createElement('div');
+                    li.className = 'flex items-center bg-gray-50 p-3 rounded-lg';
+                    li.innerHTML = `<div class="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-sm">${index + 1}</div><p class="ml-4 font-medium text-gray-700">${subject}</p>`;
+                    subjectListEl.appendChild(li);
+                });
+            } else {
+                subjectListEl.classList.add('hidden');
+                noSubjectsMessageEl.classList.remove('hidden');
+            }
+        }
+
+        // --- NOTIFICATIONS ---
+        function handleNotifications(subjects, status) {
+            if (status.toLowerCase().includes('holiday') || !subjects || subjects.length === 0) return;
+            const lastNotificationDate = localStorage.getItem('lastNotificationDate');
+            const todayDateString = new Date().toDateString();
+            if (lastNotificationDate === todayDateString) return;
+
+            if ('Notification' in window) {
+                if (Notification.permission === 'granted') sendNotification(subjects);
+                else if (Notification.permission !== 'denied') Notification.requestPermission().then(p => { if (p === 'granted') sendNotification(subjects); });
+            }
+        }
+
+        function sendNotification(subjects) {
+            const subjectString = subjects.join(', ');
+            new Notification('📚 Your School Timetable', { body: `Time to pack: ${subjectString}`, icon: 'https://placehold.co/192x192/818cf8/ffffff?text=📚' });
+            localStorage.setItem('lastNotificationDate', new Date().toDateString());
+        }
+
+        // --- MODAL AND FORM HANDLING ---
+        function openModal(modal) {
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('.modal-content').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeModal(modal) {
+            modal.classList.add('opacity-0');
+            modal.querySelector('.modal-content').classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        function populateEditForm() {
+            timetableFormEl.innerHTML = '';
+            daysOfWeek.slice(1, 7).forEach(day => {
+                const dayCapitalized = day.charAt(0).toUpperCase() + day.slice(1);
+                const subjects = timetableData[day] || [];
+                const formGroup = document.createElement('div');
+                formGroup.innerHTML = `<label for="${day}" class="block text-sm font-medium text-gray-700 mb-1">${dayCapitalized}</label><input type="text" id="${day}" name="${day}" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" value="${subjects.join(', ')}">`;
+                timetableFormEl.appendChild(formGroup);
+            });
+            saturdayConfigContainerEl.innerHTML = `<label for="saturday-rule" class="block text-sm font-medium text-gray-900 mb-2">Saturday Rule</label><select id="saturday-rule" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="2nd_4th_holiday">2nd & 4th Saturday Holiday (Default)</option><option value="all_half_day">All Saturdays are Half Day</option><option value="all_full_day">All Saturdays are Full Day</option><option value="all_holiday">All Saturdays are Holiday</option></select>`;
+            document.getElementById('saturday-rule').value = timetableData.saturdayRule || '2nd_4th_holiday';
+        }
+
+        async function saveTimetable() {
+            if (!userId) return;
+            const newTimetableData = { saturdayRule: document.getElementById('saturday-rule').value };
+            daysOfWeek.slice(1, 7).forEach(day => {
+                const input = document.getElementById(day);
+                newTimetableData[day] = input.value.split(',').map(s => s.trim()).filter(s => s !== '');
+            });
+            try {
+                const timetableRef = doc(db, 'artifacts', appId, 'users', userId, 'timetable', 'schedule');
+                await setDoc(timetableRef, newTimetableData);
+                closeModal(editModal);
+            } catch (error) { console.error("Error saving timetable: ", error); }
+        }
+
+        // --- SYNC/TRANSFER LOGIC ---
+        function generateQRCodeForUserId() {
+            if (!userId) return;
+            qrCodeContainer.innerHTML = '';
+            new QRCode(qrCodeContainer, {
+                text: userId, // The QR code now contains only the User ID
+                width: 180,
+                height: 180,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+        
+        async function loadTimetableFromId() {
+            const sourceId = loadIdInput.value.trim();
+            if (!sourceId) { 
+                alert("Please enter a User ID."); 
+                return; 
+            }
+            if (sourceId === userId) { 
+                alert("You can't load data from your own ID."); 
+                return; 
+            }
+
+            try {
+                const sourceRef = doc(db, 'artifacts', appId, 'users', sourceId, 'timetable', 'schedule');
+                const docSnap = await getDoc(sourceRef);
+
+                if (docSnap.exists()) {
+                    const dataToLoad = docSnap.data();
+                    const destinationRef = doc(db, 'artifacts', appId, 'users', userId, 'timetable', 'schedule');
+                    await setDoc(destinationRef, dataToLoad);
+                    alert("Timetable loaded successfully!");
+                    closeModal(syncModal);
+                } else {
+                    alert("Error: No timetable found for that User ID. Please check the ID and try again.");
+                }
+            } catch (error) {
+                console.error("Error loading timetable:", error);
+                alert("An error occurred while trying to load the timetable.");
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        editTimetableBtn.addEventListener('click', () => openModal(editModal));
+        cancelEditBtn.addEventListener('click', () => closeModal(editModal));
+        saveBtn.addEventListener('click', saveTimetable);
+        
+        syncTransferBtn.addEventListener('click', () => openModal(syncModal));
+        cancelSyncBtn.addEventListener('click', () => closeModal(syncModal));
+        loadTimetableBtn.addEventListener('click', loadTimetableFromId);
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (!editModal.classList.contains('hidden')) closeModal(editModal);
+                if (!syncModal.classList.contains('hidden')) closeModal(syncModal);
+            }
+        });
+
+        // Initial call
+        displayTodaysSchedule();
+
+    </script>
+</body>
+</html>
