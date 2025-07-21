@@ -9,7 +9,7 @@ A simple, modern, and responsive Progressive Web App (PWA) designed to help stud
 -   **Daily Schedule View:** Automatically displays the current day's subjects upon opening.
 -   **Day-by-Day Navigation:** Easily browse to previous or upcoming days using intuitive arrow buttons.
 -   **Live Device Sync:** Link multiple devices (e.g., a phone and a desktop) to the same timetable. Edits made on one device appear instantly on all linked devices.
--   **Customizable Saturday Rules:** Configure Saturdays as full-days, half-days, all holidays, or the default (2nd & 4th Saturday holiday).
+-   **Customizable Saturday Rules:** Configure Saturdays as full-days, half-days, all holidays, or have holidays on the 1st & 3rd or 2nd & 4th Saturdays.
 -   **Web Notifications:** Get a notification every morning with the list of subjects for the day (requires user permission).
 -   **Secure Cloud Storage:** All timetable data is stored securely in your personal Firebase project.
 
