@@ -91,6 +91,16 @@ You must enable the services the app uses.
 
 Your app is now fully configured and ready to use!
 
+## Security Note on API Keys
+
+This project includes the Firebase configuration object, including an API key, directly in the `index.html` file. This will trigger a "Secret scanning" alert in GitHub.
+
+This is expected and acceptable for this specific project because:
+1.  The key is a client-side web API key, which is designed to be public.
+2.  All access to user data is protected by **Firestore Security Rules**, which are configured on the server. These rules ensure that users can only read and write their own data, regardless of who has the API key.
+
+For more advanced applications, it is best practice to store keys using environment variables, but for a simple static site like this, the current method is secure.
+
 ## Technology Stack
 
 -   **Frontend:** HTML5, Tailwind CSS
